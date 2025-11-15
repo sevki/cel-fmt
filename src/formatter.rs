@@ -206,7 +206,7 @@ fn format_binary_op(op: &str, args: &[IdedExpr]) -> Doc {
         _ => op,
     };
 
-    // Add parentheses for complex expressions
+    // Add parentheses for complex expressions when needed
     let left_doc = if needs_parens(&args[0].expr, op) {
         Doc::parens(left)
     } else {
@@ -219,15 +219,19 @@ fn format_binary_op(op: &str, args: &[IdedExpr]) -> Doc {
         right
     };
 
-    // Don't wrap in group - just format inline
-    // This makes formatting consistent across the expression
-    Doc::concat(vec![
+    // rustfmt-style: one operator per line
+    // Use soft_line to break only when needed
+    // Indent the operator, but not the right operand so chains stay at the same level
+    Doc::group(Doc::concat(vec![
         left_doc,
-        Doc::text(" "),
-        Doc::text(op_str),
-        Doc::text(" "),
+        Doc::indent(Doc::concat(vec![
+            Doc::if_break(Doc::nil(), Doc::text(" ")), // space when flat, nothing when breaking
+            Doc::soft_line(),                          // newline when breaking, nothing when flat
+            Doc::text(op_str),
+            Doc::text(" "),
+        ])),
         right_doc,
-    ])
+    ]))
 }
 
 /// Format a unary operator
@@ -299,12 +303,10 @@ fn format_list(list: &ListExpr) -> Doc {
 
     // For simple short lists, always keep them inline for consistency
     // A list is "simple" if all elements are literals or identifiers
-    let is_simple = list.elements.iter().all(|elem| {
-        matches!(
-            elem.expr,
-            Expr::Literal(_) | Expr::Ident(_)
-        )
-    });
+    let is_simple = list
+        .elements
+        .iter()
+        .all(|elem| matches!(elem.expr, Expr::Literal(_) | Expr::Ident(_)));
 
     if is_simple && list.elements.len() <= 5 {
         // Format inline without grouping
