@@ -581,28 +581,28 @@ fn extract_exists_one_pattern(comp: &ComprehensionExpr) -> Option<Doc> {
             if let Expr::Call(add_call) = &then_branch.expr {
                 if add_call.func_name == "_+_" && add_call.args.len() == 2 {
                     if let Expr::Ident(name) = &add_call.args[0].expr {
-                        if name == "@result" {
-                            if is_literal_int(&add_call.args[1].expr, 1) {
-                                // Check else_branch is @result
-                                if let Expr::Ident(else_name) = &else_branch.expr {
-                                    if else_name == "@result" {
-                                        // Verify result is @result == 1
-                                        if let Expr::Call(result_call) = &comp.result.expr {
-                                            if result_call.func_name == "_==_"
-                                                && result_call.args.len() == 2
+                        if name == "@result"
+                            && is_literal_int(&add_call.args[1].expr, 1)
+                        {
+                            // Check else_branch is @result
+                            if let Expr::Ident(else_name) = &else_branch.expr {
+                                if else_name == "@result" {
+                                    // Verify result is @result == 1
+                                    if let Expr::Call(result_call) = &comp.result.expr {
+                                        if result_call.func_name == "_==_"
+                                            && result_call.args.len() == 2
+                                        {
+                                            if let Expr::Ident(result_name) =
+                                                &result_call.args[0].expr
                                             {
-                                                if let Expr::Ident(result_name) =
-                                                    &result_call.args[0].expr
+                                                if result_name == "@result"
+                                                    && is_literal_int(
+                                                        &result_call.args[1].expr,
+                                                        1,
+                                                    )
                                                 {
-                                                    if result_name == "@result"
-                                                        && is_literal_int(
-                                                            &result_call.args[1].expr,
-                                                            1,
-                                                        )
-                                                    {
-                                                        // This is exists_one!
-                                                        return Some(format_expr(predicate));
-                                                    }
+                                                    // This is exists_one!
+                                                    return Some(format_expr(predicate));
                                                 }
                                             }
                                         }
