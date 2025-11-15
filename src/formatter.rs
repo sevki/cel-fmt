@@ -206,7 +206,7 @@ fn format_binary_op(op: &str, args: &[IdedExpr]) -> Doc {
         _ => op,
     };
 
-    // Add parentheses for complex expressions
+    // Add parentheses for complex expressions when needed
     let left_doc = if needs_parens(&args[0].expr, op) {
         Doc::parens(left)
     } else {
@@ -219,11 +219,17 @@ fn format_binary_op(op: &str, args: &[IdedExpr]) -> Doc {
         right
     };
 
+    // rustfmt-style: one operator per line
+    // Use soft_line to break only when needed
+    // Indent the operator, but not the right operand so chains stay at the same level
     Doc::group(Doc::concat(vec![
         left_doc,
-        Doc::text(" "),
-        Doc::text(op_str),
-        Doc::line(),
+        Doc::indent(Doc::concat(vec![
+            Doc::if_break(Doc::nil(), Doc::text(" ")), // space when flat, nothing when breaking
+            Doc::soft_line(),                          // newline when breaking, nothing when flat
+            Doc::text(op_str),
+            Doc::text(" "),
+        ])),
         right_doc,
     ]))
 }
@@ -294,7 +300,25 @@ fn format_list(list: &ListExpr) -> Doc {
     }
 
     let elem_docs: Vec<Doc> = list.elements.iter().map(format_expr).collect();
-    Doc::wrap_brackets(Doc::join_comma(elem_docs, true))
+
+    // For simple short lists, always keep them inline for consistency
+    // A list is "simple" if all elements are literals or identifiers
+    let is_simple = list
+        .elements
+        .iter()
+        .all(|elem| matches!(elem.expr, Expr::Literal(_) | Expr::Ident(_)));
+
+    if is_simple && list.elements.len() <= 5 {
+        // Format inline without grouping
+        Doc::concat(vec![
+            Doc::text("["),
+            Doc::join(elem_docs, Doc::text(", ")),
+            Doc::text("]"),
+        ])
+    } else {
+        // Use wrapping for complex or long lists
+        Doc::wrap_brackets(Doc::join_comma(elem_docs, true))
+    }
 }
 
 /// Format a map literal

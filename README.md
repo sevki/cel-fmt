@@ -5,7 +5,7 @@ A code formatter for [Common Expression Language (CEL)](https://github.com/googl
 [![CI](https://github.com/sevki/cel-fmt/actions/workflows/ci.yml/badge.svg)](https://github.com/sevki/cel-fmt/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 
-**[🎨 Try the Online Playground](https://sevki.github.io/cel-fmt/)**
+**[💅 Try the Online Playground](https://sevki.github.io/cel-fmt/)**
 
 ## Overview
 
@@ -27,7 +27,7 @@ CEL is used extensively in Kubernetes for validation rules, admission policies, 
 
 Try cel-fmt directly in your browser without installing anything:
 
-**[🎨 https://sevki.github.io/cel-fmt/](https://sevki.github.io/cel-fmt/)**
+**[💅 https://sevki.github.io/cel-fmt/](https://sevki.github.io/cel-fmt/)**
 
 The playground runs entirely in your browser using WebAssembly, providing instant formatting with configurable options. Perfect for:
 - Quick formatting of CEL expressions

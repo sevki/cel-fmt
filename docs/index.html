@@ -9,8 +9,9 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎨 CEL Formatter Playground</h1>
-            <p class="subtitle">Format Common Expression Language (CEL) expressions in your browser</p>
+            <h1>💅 CEL Formatter Playground</h1>
+            <p class="subtitle">Format Common Expression Language (CEL) expressions in your browser<br>
+            <small style="font-size: 0.85em; color: #64748b;">Format one expression at a time</small></p>
             <div class="links">
                 <a href="https://github.com/sevki/cel-fmt" target="_blank">GitHub</a>
                 <a href="https://github.com/google/cel-spec" target="_blank">CEL Spec</a>
@@ -26,18 +27,8 @@
                     </div>
                     <textarea
                         id="input"
-                        placeholder="Enter CEL expression here...
-Example: [1,2,3].map(x,x*2)">// Kubernetes validation
-object.name.startsWith("kube-") && object.namespace == "kube-system"
-
-// List operations
-[1, 2, 3].map(x, x * 2)
-[1, 2, 3, 4, 5].filter(x, x > 2)
-[1, 2, 3].all(x, x > 0)
-[1, 2, 3].exists(x, x == 2)
-
-// Complex expressions
-x > 5 && y < 10 || z == 0</textarea>
+                        placeholder="Enter a single CEL expression here...
+Example: [1,2,3].map(x,x*2)">object.name.startsWith("kube-") && object.namespace == "kube-system"</textarea>
                 </div>
 
                 <div class="editor-panel">
