@@ -6,11 +6,26 @@ authors = ["CEL Formatter Contributors"]
 description = "A code formatter for Common Expression Language (CEL)"
 license = "MIT OR Apache-2.0"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [[bin]]
 name = "cel-fmt"
 path = "src/main.rs"
+required-features = ["cli"]
 
 [dependencies]
 cel = { path = "cel-rust/cel" }
-clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
+
+# CLI dependencies
+clap = { version = "4.5", features = ["derive"], optional = true }
+
+# WASM dependencies
+wasm-bindgen = { version = "0.2", optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
+
+[features]
+default = ["cli"]
+cli = ["dep:clap"]
+wasm = ["dep:wasm-bindgen", "dep:console_error_panic_hook"]

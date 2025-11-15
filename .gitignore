@@ -24,3 +24,6 @@ target
 # Added by cargo
 
 /target
+
+# WASM build output
+/docs/pkg

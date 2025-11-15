@@ -424,10 +424,49 @@ fn format_comprehension(comp: &ComprehensionExpr) -> Doc {
                 ]);
             }
         }
+
+        // Check for exists_one() pattern:
+        // accu_init = 0, loop_step = predicate ? (@result + 1) : @result, result = @result == 1
+        if is_literal_int(&comp.accu_init.expr, 0) {
+            if let Some(exists_one_expr) = extract_exists_one_pattern(comp) {
+                let range = format_expr(&comp.iter_range);
+                let var = Doc::text(comp.iter_var.clone());
+                return Doc::concat(vec![
+                    range,
+                    Doc::text(".exists_one("),
+                    var,
+                    Doc::text(", "),
+                    exists_one_expr,
+                    Doc::text(")"),
+                ]);
+            }
+        }
     }
 
     // Fallback: couldn't detect a macro pattern
-    Doc::text("<comprehension>")
+    // This should not happen in practice since CEL only creates comprehensions through
+    // known macros (map, filter, all, exists, exists_one). If we reach here, it indicates
+    // either:
+    // 1. A new macro was added to CEL that we don't support yet
+    // 2. There's a bug in our pattern detection
+    // 3. The CEL parser created an unexpected comprehension
+    //
+    // Rather than silently corrupting the source with a placeholder, we panic with a
+    // descriptive error message.
+    panic!(
+        "Unsupported comprehension pattern. Please report this as a bug.\n\
+         Comprehension details:\n\
+         - iter_var: {}\n\
+         - accu_var: {}\n\
+         - accu_init: {:?}\n\
+         - loop_cond: {:?}\n\
+         - loop_step: {:?}",
+        comp.iter_var,
+        comp.accu_var,
+        comp.accu_init.expr,
+        comp.loop_cond.expr,
+        comp.loop_step.expr
+    )
 }
 
 /// Check if an expression is the literal true
@@ -438,6 +477,11 @@ fn is_literal_true(expr: &Expr) -> bool {
 /// Check if an expression is the literal false
 fn is_literal_false(expr: &Expr) -> bool {
     matches!(expr, Expr::Literal(CelVal::Boolean(false)))
+}
+
+/// Check if an expression is a specific integer literal
+fn is_literal_int(expr: &Expr, value: i64) -> bool {
+    matches!(expr, Expr::Literal(CelVal::Int(v)) if *v == value)
 }
 
 /// Extract map() pattern: @result + [expr]
@@ -520,6 +564,54 @@ fn extract_exists_pattern(comp: &ComprehensionExpr) -> Option<Doc> {
             if let Expr::Ident(name) = &call.args[0].expr {
                 if name == "@result" {
                     return Some(format_expr(&call.args[1]));
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Extract exists_one() pattern
+/// Pattern: loop_step = predicate ? (@result + 1) : @result
+fn extract_exists_one_pattern(comp: &ComprehensionExpr) -> Option<Doc> {
+    // loop_step should be a ternary: predicate ? (@result + 1) : @result
+    if let Expr::Call(call) = &comp.loop_step.expr {
+        if call.func_name == "_?_:_" && call.args.len() == 3 {
+            let predicate = &call.args[0];
+            let then_branch = &call.args[1];
+            let else_branch = &call.args[2];
+
+            // Check then_branch is @result + 1
+            if let Expr::Call(add_call) = &then_branch.expr {
+                if add_call.func_name == "_+_" && add_call.args.len() == 2 {
+                    if let Expr::Ident(name) = &add_call.args[0].expr {
+                        if name == "@result" {
+                            if is_literal_int(&add_call.args[1].expr, 1) {
+                                // Check else_branch is @result
+                                if let Expr::Ident(else_name) = &else_branch.expr {
+                                    if else_name == "@result" {
+                                        // Verify result is @result == 1
+                                        if let Expr::Call(result_call) = &comp.result.expr {
+                                            if result_call.func_name == "_==_"
+                                                && result_call.args.len() == 2
+                                            {
+                                                if let Expr::Ident(result_name) =
+                                                    &result_call.args[0].expr
+                                                {
+                                                    if result_name == "@result"
+                                                        && is_literal_int(&result_call.args[1].expr, 1)
+                                                    {
+                                                        // This is exists_one!
+                                                        return Some(format_expr(predicate));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -748,6 +840,18 @@ mod tests {
         assert_eq!(
             format_expr_str("[1, 2, 3].exists(x, x > 5)"),
             "[1, 2, 3].exists(x, x > 5)"
+        );
+    }
+
+    #[test]
+    fn test_exists_one_macro() {
+        assert_eq!(
+            format_expr_str("[1, 2, 3].exists_one(x, x == 2)"),
+            "[1, 2, 3].exists_one(x, x == 2)"
+        );
+        assert_eq!(
+            format_expr_str("[1, 2, 3, 3].exists_one(x, x > 2)"),
+            "[1, 2, 3, 3].exists_one(x, x > 2)"
         );
     }
 
