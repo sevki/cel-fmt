@@ -461,11 +461,7 @@ fn format_comprehension(comp: &ComprehensionExpr) -> Doc {
          - accu_init: {:?}\n\
          - loop_cond: {:?}\n\
          - loop_step: {:?}",
-        comp.iter_var,
-        comp.accu_var,
-        comp.accu_init.expr,
-        comp.loop_cond.expr,
-        comp.loop_step.expr
+        comp.iter_var, comp.accu_var, comp.accu_init.expr, comp.loop_cond.expr, comp.loop_step.expr
     )
 }
 
@@ -599,7 +595,10 @@ fn extract_exists_one_pattern(comp: &ComprehensionExpr) -> Option<Doc> {
                                                     &result_call.args[0].expr
                                                 {
                                                     if result_name == "@result"
-                                                        && is_literal_int(&result_call.args[1].expr, 1)
+                                                        && is_literal_int(
+                                                            &result_call.args[1].expr,
+                                                            1,
+                                                        )
                                                     {
                                                         // This is exists_one!
                                                         return Some(format_expr(predicate));
