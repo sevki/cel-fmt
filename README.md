@@ -214,9 +214,14 @@ cargo test
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Known Limitations
+## Supported Features
 
-- **Comprehension Formatting**: Macros like `.map()`, `.filter()`, `.all()`, and `.exists()` are expanded by the parser into comprehension expressions, which are currently formatted as `<comprehension>`. Future versions will detect and format these back to their original macro form.
+- ✅ All CEL expression types (literals, operators, functions, lists, maps, structs)
+- ✅ Macro expressions (`.map()`, `.filter()`, `.all()`, `.exists()`)
+- ✅ Nested macros (e.g., `.map(x, x.map(y, y * 2))`)
+- ✅ Operator precedence handling
+- ✅ Configurable formatting options
+- ✅ Fast formatting (written in Rust)
 
 ## License
 
