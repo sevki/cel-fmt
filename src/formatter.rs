@@ -219,13 +219,15 @@ fn format_binary_op(op: &str, args: &[IdedExpr]) -> Doc {
         right
     };
 
-    Doc::group(Doc::concat(vec![
+    // Don't wrap in group - just format inline
+    // This makes formatting consistent across the expression
+    Doc::concat(vec![
         left_doc,
         Doc::text(" "),
         Doc::text(op_str),
-        Doc::line(),
+        Doc::text(" "),
         right_doc,
-    ]))
+    ])
 }
 
 /// Format a unary operator
@@ -294,7 +296,27 @@ fn format_list(list: &ListExpr) -> Doc {
     }
 
     let elem_docs: Vec<Doc> = list.elements.iter().map(format_expr).collect();
-    Doc::wrap_brackets(Doc::join_comma(elem_docs, true))
+
+    // For simple short lists, always keep them inline for consistency
+    // A list is "simple" if all elements are literals or identifiers
+    let is_simple = list.elements.iter().all(|elem| {
+        matches!(
+            elem.expr,
+            Expr::Literal(_) | Expr::Ident(_)
+        )
+    });
+
+    if is_simple && list.elements.len() <= 5 {
+        // Format inline without grouping
+        Doc::concat(vec![
+            Doc::text("["),
+            Doc::join(elem_docs, Doc::text(", ")),
+            Doc::text("]"),
+        ])
+    } else {
+        // Use wrapping for complex or long lists
+        Doc::wrap_brackets(Doc::join_comma(elem_docs, true))
+    }
 }
 
 /// Format a map literal
