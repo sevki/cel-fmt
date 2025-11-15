@@ -1,0 +1,46 @@
+// Complex real-world CEL expressions
+
+// Authorization check
+resource.name.startsWith("/groups/" + auth.claims.group) && auth.claims.email_verified
+
+// Multi-condition validation
+request.time - resource.age < duration("24h") && resource.status == "active" && has(resource.owner)
+
+// Nested map operations
+[[1, 2], [3, 4]].map(x, x.map(y, y * 2)) == [[2, 4], [6, 8]]
+
+// Complex filtering
+users.filter(u, u.age >= 18 && u.active == true && "admin" in u.roles).size() > 0
+
+// Combining multiple checks
+(has(request.auth) ? request.auth.token.aud.contains("api") : false) && request.method in ["GET", "POST"] && request.path.startsWith("/api/v1/")
+
+// Time-based logic with multiple conditions
+(timestamp("2024-01-01T00:00:00Z") <= request.time && request.time <= timestamp("2024-12-31T23:59:59Z")) && request.auth.claims.exp > request.time
+
+// Advanced array operations
+resources.exists(r, r.owner == request.auth.claims.sub) || request.auth.claims.admin == true
+
+// Deep nesting with conditional logic
+metadata.labels.env == "prod" ? (spec.replicas >= 3 && spec.template.spec.containers.all(c, has(c.resources.limits) && has(c.resources.requests))) : spec.replicas >= 1
+
+// String manipulation and validation
+request.headers["content-type"].matches("^application/(json|xml)$") && size(request.body) < 1048576
+
+// Combining map and filter operations
+accounts.filter(a, a.balance > 1000).map(a, {"id": a.id, "name": a.holder.name, "balance": a.balance})
+
+// Validation with custom error messages
+has(user.email) && user.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
+
+// Nested object traversal
+data.users.exists(u, u.profile.preferences.notifications.email == true && u.profile.verified)
+
+// Complex mathematical expressions with precedence
+((price * quantity) - discount) * (1 + taxRate / 100)
+
+// Multi-level exists and all combinations
+groups.all(g, g.members.exists(m, m.active && m.role in ["admin", "moderator"]))
+
+// Duration calculations
+request.time - user.lastLogin < duration("7d") && user.sessions.all(s, s.expiresAt > request.time)

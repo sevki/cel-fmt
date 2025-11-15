@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEL Formatter Playground</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 CEL Formatter Playground</h1>
+            <p class="subtitle">Format Common Expression Language (CEL) expressions in your browser</p>
+            <div class="links">
+                <a href="https://github.com/sevki/cel-fmt" target="_blank">GitHub</a>
+                <a href="https://github.com/google/cel-spec" target="_blank">CEL Spec</a>
+            </div>
+        </header>
+
+        <main>
+            <div class="editor-container">
+                <div class="editor-panel">
+                    <div class="panel-header">
+                        <h2>Input</h2>
+                        <button id="clearBtn" class="btn btn-secondary">Clear</button>
+                    </div>
+                    <textarea
+                        id="input"
+                        placeholder="Enter CEL expression here...
+Example: [1,2,3].map(x,x*2)">// Kubernetes validation
+object.name.startsWith("kube-") && object.namespace == "kube-system"
+
+// List operations
+[1, 2, 3].map(x, x * 2)
+[1, 2, 3, 4, 5].filter(x, x > 2)
+[1, 2, 3].all(x, x > 0)
+[1, 2, 3].exists(x, x == 2)
+
+// Complex expressions
+x > 5 && y < 10 || z == 0</textarea>
+                </div>
+
+                <div class="editor-panel">
+                    <div class="panel-header">
+                        <h2>Formatted Output</h2>
+                        <button id="copyBtn" class="btn btn-secondary">Copy</button>
+                    </div>
+                    <textarea id="output" readonly placeholder="Formatted output will appear here..."></textarea>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="maxWidth">Max Width:</label>
+                    <input type="number" id="maxWidth" value="80" min="20" max="200">
+                </div>
+
+                <div class="control-group">
+                    <label for="indentWidth">Indent Width:</label>
+                    <input type="number" id="indentWidth" value="2" min="1" max="8">
+                </div>
+
+                <div class="control-group checkbox">
+                    <input type="checkbox" id="useTabs">
+                    <label for="useTabs">Use Tabs</label>
+                </div>
+
+                <div class="control-group checkbox">
+                    <input type="checkbox" id="trailingComma" checked>
+                    <label for="trailingComma">Trailing Commas</label>
+                </div>
+
+                <button id="formatBtn" class="btn btn-primary">Format</button>
+            </div>
+
+            <div id="error" class="error hidden"></div>
+            <div id="loading" class="loading hidden">Loading formatter...</div>
+        </main>
+
+        <footer>
+            <p>
+                Built with <a href="https://github.com/sevki/cel-fmt" target="_blank">cel-fmt</a>
+                | Powered by <a href="https://rustwasm.github.io/" target="_blank">WebAssembly</a>
+                | Version: <span id="version">loading...</span>
+            </p>
+        </footer>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
