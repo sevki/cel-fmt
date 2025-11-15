@@ -1,0 +1,37 @@
+// Kubernetes validation examples
+
+// Validate object metadata
+object.name.startsWith("kube-") && object.namespace == "kube-system"
+
+// Check resource limits
+resource.limits.cpu <= "2000m" && resource.limits.memory <= "4Gi"
+
+// Validate container image
+container.image.startsWith("registry.k8s.io/") || container.image.startsWith("gcr.io/")
+
+// Check if all containers have resource requests
+spec.containers.all(c, has(c.resources) && has(c.resources.requests))
+
+// Validate replica count based on environment
+metadata.labels.env == "production" ? spec.replicas >= 3 : spec.replicas >= 1
+
+// Check security context
+has(pod.spec.securityContext) && pod.spec.securityContext.runAsNonRoot == true
+
+// Validate service account
+has(spec.serviceAccountName) && spec.serviceAccountName != "default"
+
+// Complex validation with multiple conditions
+(has(metadata.labels) && "app" in metadata.labels) && (has(spec.template.spec.containers) && size(spec.template.spec.containers) > 0) && spec.template.spec.containers.all(c, has(c.livenessProbe) || has(c.readinessProbe))
+
+// Validate time-based constraints
+request.time - object.creationTimestamp < duration("24h")
+
+// Check annotations
+has(metadata.annotations) && "kubernetes.io/psp" in metadata.annotations
+
+// Validate array uniqueness
+spec.containers.map(c, c.name).size() == spec.containers.size()
+
+// Nested field validation
+object.spec.template.metadata.labels.subsetOf(object.spec.selector.matchLabels)

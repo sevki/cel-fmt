@@ -1,0 +1,16 @@
+[package]
+name = "cel-fmt"
+version = "0.1.0"
+edition = "2021"
+authors = ["CEL Formatter Contributors"]
+description = "A code formatter for Common Expression Language (CEL)"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "cel-fmt"
+path = "src/main.rs"
+
+[dependencies]
+cel = { path = "cel-rust/cel" }
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1.0"

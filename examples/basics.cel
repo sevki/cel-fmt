@@ -1,0 +1,78 @@
+// Basic literals
+true
+false
+42
+3.14
+"hello world"
+b"bytes"
+null
+
+// Arithmetic
+1 + 2
+10 - 5
+3 * 4
+20 / 4
+17 % 5
+
+// Comparison
+5 > 3
+10 >= 10
+2 < 7
+4 <= 4
+"foo" == "foo"
+"bar" != "baz"
+
+// Logical operators
+true && false
+true || false
+!true
+
+// Variables and field access
+x
+user.name
+user.email
+request.auth.claims.email
+
+// Lists
+[]
+[1, 2, 3]
+["a", "b", "c"]
+[1, "mixed", true, 3.14]
+
+// Maps
+{}
+{"a": 1, "b": 2}
+{"name": "John", "age": 30, "active": true}
+
+// Structs
+Person{name: "Alice", age: 25}
+Config{enabled: true, timeout: duration("30s")}
+
+// Function calls
+size([1, 2, 3])
+"hello".startsWith("h")
+"world".endsWith("ld")
+"foo bar".split(" ")
+int("42")
+string(123)
+
+// Ternary operator
+x > 0 ? "positive" : "negative or zero"
+
+// Complex expressions
+(a + b) * c
+x > 5 && y < 10 || z == 0
+[1, 2, 3].map(x, x * 2)
+[1, 2, 3, 4, 5].filter(x, x % 2 == 0)
+[1, 2, 3].all(x, x > 0)
+[1, 2, 3].exists(x, x == 2)
+
+// Index and member access
+list[0]
+map["key"]
+x in list
+"key" in map
+
+// Nested structures
+{"user": {"name": "Bob", "roles": ["admin", "user"]}}
+Config{database: Database{host: "localhost", port: 5432}}
