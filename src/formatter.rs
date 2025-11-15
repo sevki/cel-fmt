@@ -1,4 +1,7 @@
-use cel::common::ast::{CallExpr, ComprehensionExpr, EntryExpr, Expr, IdedExpr, ListExpr, MapExpr, SelectExpr, StructExpr};
+use cel::common::ast::{
+    CallExpr, ComprehensionExpr, EntryExpr, Expr, IdedExpr, ListExpr, MapExpr, SelectExpr,
+    StructExpr,
+};
 use cel::common::value::CelVal;
 use cel::parser::Parser;
 
@@ -9,7 +12,9 @@ use crate::options::FormatOptions;
 pub fn format_cel(source: &str, options: &FormatOptions) -> anyhow::Result<String> {
     // Parse the CEL expression
     let parser = Parser::new();
-    let ast = parser.parse(source).map_err(|e| anyhow::anyhow!("Parse error: {:?}", e))?;
+    let ast = parser
+        .parse(source)
+        .map_err(|e| anyhow::anyhow!("Parse error: {:?}", e))?;
 
     // Format the AST
     let doc = format_expr(&ast);
@@ -153,8 +158,20 @@ fn format_call(call: &CallExpr) -> Doc {
 fn is_binary_op(name: &str) -> bool {
     matches!(
         name,
-        "_+_" | "_-_" | "_*_" | "_/_" | "_%_" | "_==_" | "_!=_" | "_<_" | "_<=_" | "_>_" | "_>=_"
-            | "_&&_" | "_||_" | "@in"
+        "_+_"
+            | "_-_"
+            | "_*_"
+            | "_/_"
+            | "_%_"
+            | "_==_"
+            | "_!=_"
+            | "_<_"
+            | "_<=_"
+            | "_>_"
+            | "_>=_"
+            | "_&&_"
+            | "_||_"
+            | "@in"
     )
 }
 
@@ -257,12 +274,7 @@ fn format_index(args: &[IdedExpr]) -> Doc {
     let target = format_expr(&args[0]);
     let index = format_expr(&args[1]);
 
-    Doc::concat(vec![
-        target,
-        Doc::text("["),
-        index,
-        Doc::text("]"),
-    ])
+    Doc::concat(vec![target, Doc::text("["), index, Doc::text("]")])
 }
 
 /// Format function arguments
@@ -294,15 +306,13 @@ fn format_map(map: &MapExpr) -> Doc {
     let entry_docs: Vec<Doc> = map
         .entries
         .iter()
-        .filter_map(|ided_entry| {
-            match &ided_entry.expr {
-                EntryExpr::MapEntry(entry) => {
-                    let key = format_expr(&entry.key);
-                    let value = format_expr(&entry.value);
-                    Some(Doc::concat(vec![key, Doc::text(": "), value]))
-                }
-                _ => None,
+        .filter_map(|ided_entry| match &ided_entry.expr {
+            EntryExpr::MapEntry(entry) => {
+                let key = format_expr(&entry.key);
+                let value = format_expr(&entry.value);
+                Some(Doc::concat(vec![key, Doc::text(": "), value]))
             }
+            _ => None,
         })
         .collect();
 
@@ -320,15 +330,13 @@ fn format_struct(s: &StructExpr) -> Doc {
     let field_docs: Vec<Doc> = s
         .entries
         .iter()
-        .filter_map(|ided_entry| {
-            match &ided_entry.expr {
-                EntryExpr::StructField(field) => {
-                    let key = Doc::text(field.field.clone());
-                    let value = format_expr(&field.value);
-                    Some(Doc::concat(vec![key, Doc::text(": "), value]))
-                }
-                _ => None,
+        .filter_map(|ided_entry| match &ided_entry.expr {
+            EntryExpr::StructField(field) => {
+                let key = Doc::text(field.field.clone());
+                let value = format_expr(&field.value);
+                Some(Doc::concat(vec![key, Doc::text(": "), value]))
             }
+            _ => None,
         })
         .collect();
 
@@ -630,7 +638,10 @@ mod tests {
     #[test]
     fn test_maps() {
         assert_eq!(format_expr_str("{}"), "{}");
-        assert_eq!(format_expr_str(r#"{"a": 1, "b": 2}"#), r#"{"a": 1, "b": 2}"#);
+        assert_eq!(
+            format_expr_str(r#"{"a": 1, "b": 2}"#),
+            r#"{"a": 1, "b": 2}"#
+        );
     }
 
     #[test]
@@ -642,7 +653,10 @@ mod tests {
     #[test]
     fn test_function_calls() {
         assert_eq!(format_expr_str("size([1, 2, 3])"), "size([1, 2, 3])");
-        assert_eq!(format_expr_str(r#""hello".startsWith("h")"#), r#""hello".startsWith("h")"#);
+        assert_eq!(
+            format_expr_str(r#""hello".startsWith("h")"#),
+            r#""hello".startsWith("h")"#
+        );
     }
 
     #[test]
@@ -668,10 +682,7 @@ mod tests {
 
     #[test]
     fn test_complex_expressions() {
-        assert_eq!(
-            format_expr_str("x > 5 && y < 10"),
-            "x > 5 && y < 10"
-        );
+        assert_eq!(format_expr_str("x > 5 && y < 10"), "x > 5 && y < 10");
         assert_eq!(
             format_expr_str(r#"user.age >= 18 && user.active == true"#),
             r#"user.age >= 18 && user.active == true"#

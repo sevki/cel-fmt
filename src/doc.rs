@@ -163,11 +163,18 @@ impl Doc {
             Doc::Group(doc) => {
                 // Try flat mode first
                 let mut flat_buffer = String::new();
-                doc.render_impl(&mut flat_buffer, max_width, indent_str, indent_level, Mode::Flat);
+                doc.render_impl(
+                    &mut flat_buffer,
+                    max_width,
+                    indent_str,
+                    indent_level,
+                    Mode::Flat,
+                );
 
                 // Check if it fits on current line
                 let current_line_len = buffer.lines().last().map(|l| l.len()).unwrap_or(0);
-                let fits = current_line_len + flat_buffer.len() <= max_width && !flat_buffer.contains('\n');
+                let fits = current_line_len + flat_buffer.len() <= max_width
+                    && !flat_buffer.contains('\n');
 
                 if fits {
                     buffer.push_str(&flat_buffer);
@@ -176,9 +183,16 @@ impl Doc {
                 }
             }
 
-            Doc::IfBreak { break_doc, flat_doc } => match mode {
-                Mode::Break => break_doc.render_impl(buffer, max_width, indent_str, indent_level, mode),
-                Mode::Flat => flat_doc.render_impl(buffer, max_width, indent_str, indent_level, mode),
+            Doc::IfBreak {
+                break_doc,
+                flat_doc,
+            } => match mode {
+                Mode::Break => {
+                    break_doc.render_impl(buffer, max_width, indent_str, indent_level, mode)
+                }
+                Mode::Flat => {
+                    flat_doc.render_impl(buffer, max_width, indent_str, indent_level, mode)
+                }
             },
         }
     }
