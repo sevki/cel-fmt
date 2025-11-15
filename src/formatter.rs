@@ -372,47 +372,45 @@ fn format_struct(s: &StructExpr) -> Doc {
 
 /// Format a comprehension expression
 fn format_comprehension(comp: &ComprehensionExpr) -> Doc {
-    // Comprehensions are the result of macro expansion
-    // Try to detect common patterns and format them back to macro form
+    // Comprehensions are the result of macro expansion.
+    // Try to detect common patterns and format them back to macro form.
 
-    // Detect map() pattern:
-    // accu_var = "@result", accu_init = [], loop_cond = true,
-    // loop_step = @result + [expr], result = @result
-    if comp.accu_var == "@result" {
-        if let Expr::List(list) = &comp.accu_init.expr {
-            if list.elements.is_empty() {
-                // Check if loop_cond is true
-                if is_literal_true(&comp.loop_cond.expr) {
-                    // Check if loop_step is @result + [expr]
-                    if let Some(map_expr) = extract_map_pattern(comp) {
-                        let range = format_expr(&comp.iter_range);
-                        let var = Doc::text(comp.iter_var.clone());
-                        return Doc::concat(vec![
-                            range,
-                            Doc::text(".map("),
-                            var,
-                            Doc::text(", "),
-                            map_expr,
-                            Doc::text(")"),
-                        ]);
-                    }
-                }
-
-                // Check for filter() pattern:
-                // loop_cond = predicate, loop_step = @result + [iter_var]
-                if let Some(filter_expr) = extract_filter_pattern(comp) {
-                    let range = format_expr(&comp.iter_range);
-                    let var = Doc::text(comp.iter_var.clone());
+    if comp.accu_var == "@result" && comp.iter_var2.is_none() {
+        if let Some(map_pattern) = detect_map_pattern(comp) {
+            let range = format_expr(&comp.iter_range);
+            let var = Doc::text(comp.iter_var.clone());
+            if let Some(filter_expr) = map_pattern.filter_expr {
+                if map_pattern.maps_iter_var {
                     return Doc::concat(vec![
                         range,
                         Doc::text(".filter("),
                         var,
                         Doc::text(", "),
-                        filter_expr,
+                        format_expr(filter_expr),
                         Doc::text(")"),
                     ]);
                 }
+
+                return Doc::concat(vec![
+                    range,
+                    Doc::text(".map("),
+                    Doc::text(comp.iter_var.clone()),
+                    Doc::text(", "),
+                    format_expr(filter_expr),
+                    Doc::text(", "),
+                    format_expr(map_pattern.map_expr),
+                    Doc::text(")"),
+                ]);
             }
+
+            return Doc::concat(vec![
+                range,
+                Doc::text(".map("),
+                var,
+                Doc::text(", "),
+                format_expr(map_pattern.map_expr),
+                Doc::text(")"),
+            ]);
         }
 
         // Check for all() pattern:
@@ -467,26 +465,103 @@ fn format_comprehension(comp: &ComprehensionExpr) -> Doc {
         }
     }
 
-    // Fallback: couldn't detect a macro pattern
-    // This should not happen in practice since CEL only creates comprehensions through
-    // known macros (map, filter, all, exists, exists_one). If we reach here, it indicates
-    // either:
-    // 1. A new macro was added to CEL that we don't support yet
-    // 2. There's a bug in our pattern detection
-    // 3. The CEL parser created an unexpected comprehension
-    //
-    // Rather than silently corrupting the source with a placeholder, we panic with a
-    // descriptive error message.
-    panic!(
-        "Unsupported comprehension pattern. Please report this as a bug.\n\
-         Comprehension details:\n\
-         - iter_var: {}\n\
-         - accu_var: {}\n\
-         - accu_init: {:?}\n\
-         - loop_cond: {:?}\n\
-         - loop_step: {:?}",
-        comp.iter_var, comp.accu_var, comp.accu_init.expr, comp.loop_cond.expr, comp.loop_step.expr
-    )
+    format_raw_comprehension(comp)
+}
+
+struct MapPattern<'a> {
+    map_expr: &'a IdedExpr,
+    filter_expr: Option<&'a IdedExpr>,
+    maps_iter_var: bool,
+}
+
+fn detect_map_pattern<'a>(comp: &'a ComprehensionExpr) -> Option<MapPattern<'a>> {
+    if comp.accu_var != "@result" {
+        return None;
+    }
+
+    match &comp.accu_init.expr {
+        Expr::List(list) if list.elements.is_empty() => {}
+        _ => return None,
+    }
+
+    if !is_literal_true(&comp.loop_cond.expr) {
+        return None;
+    }
+
+    match &comp.result.expr {
+        Expr::Ident(name) if name == "@result" => {}
+        _ => return None,
+    }
+
+    match &comp.loop_step.expr {
+        Expr::Call(call) if call.func_name == "_+_" && call.args.len() == 2 => {
+            extract_map_step(&call.args[0], &call.args[1]).map(|map_expr| MapPattern {
+                filter_expr: None,
+                map_expr,
+                maps_iter_var: maps_iter_var(map_expr, &comp.iter_var),
+            })
+        }
+        Expr::Call(call) if call.func_name == "_?_:_" && call.args.len() == 3 => {
+            let predicate = &call.args[0];
+            let then_branch = &call.args[1];
+            let else_branch = &call.args[2];
+
+            if !matches!(&else_branch.expr, Expr::Ident(name) if name == "@result") {
+                return None;
+            }
+
+            let map_expr = match &then_branch.expr {
+                Expr::Call(add_call) if add_call.func_name == "_+_" && add_call.args.len() == 2 => {
+                    extract_map_step(&add_call.args[0], &add_call.args[1])
+                }
+                _ => None,
+            }?;
+
+            Some(MapPattern {
+                filter_expr: Some(predicate),
+                maps_iter_var: maps_iter_var(map_expr, &comp.iter_var),
+                map_expr,
+            })
+        }
+        _ => None,
+    }
+}
+
+fn extract_map_step<'a>(first_arg: &'a IdedExpr, second_arg: &'a IdedExpr) -> Option<&'a IdedExpr> {
+    if !matches!(&first_arg.expr, Expr::Ident(name) if name == "@result") {
+        return None;
+    }
+
+    match &second_arg.expr {
+        Expr::List(list) if list.elements.len() == 1 => Some(&list.elements[0]),
+        _ => None,
+    }
+}
+
+fn maps_iter_var(expr: &IdedExpr, iter_var: &str) -> bool {
+    matches!(&expr.expr, Expr::Ident(name) if name == iter_var)
+}
+
+fn format_raw_comprehension(comp: &ComprehensionExpr) -> Doc {
+    let mut args = vec![
+        format_expr(&comp.iter_range),
+        Doc::text(comp.iter_var.clone()),
+    ];
+
+    if let Some(iter_var2) = &comp.iter_var2 {
+        args.push(Doc::text(iter_var2.clone()));
+    }
+
+    args.push(Doc::text(comp.accu_var.clone()));
+    args.push(format_expr(&comp.accu_init));
+    args.push(format_expr(&comp.loop_cond));
+    args.push(format_expr(&comp.loop_step));
+    args.push(format_expr(&comp.result));
+
+    Doc::concat(vec![
+        Doc::text("__comprehension__"),
+        Doc::wrap_parens(Doc::join_comma(args, false)),
+    ])
 }
 
 /// Check if an expression is the literal true
@@ -502,65 +577,6 @@ fn is_literal_false(expr: &Expr) -> bool {
 /// Check if an expression is a specific integer literal
 fn is_literal_int(expr: &Expr, value: i64) -> bool {
     matches!(expr, Expr::Literal(CelVal::Int(v)) if *v == value)
-}
-
-/// Extract map() pattern: @result + [expr]
-fn extract_map_pattern(comp: &ComprehensionExpr) -> Option<Doc> {
-    if let Expr::Call(call) = &comp.loop_step.expr {
-        if call.func_name == "_+_" && call.args.len() == 2 {
-            // Check if first arg is @result
-            if let Expr::Ident(name) = &call.args[0].expr {
-                if name == "@result" {
-                    // Check if second arg is [expr]
-                    if let Expr::List(list) = &call.args[1].expr {
-                        if list.elements.len() == 1 {
-                            return Some(format_expr(&list.elements[0]));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Extract filter() pattern
-/// Pattern: loop_step = predicate ? (@result + [var]) : @result
-fn extract_filter_pattern(comp: &ComprehensionExpr) -> Option<Doc> {
-    // loop_step should be a ternary: predicate ? (@result + [var]) : @result
-    if let Expr::Call(call) = &comp.loop_step.expr {
-        if call.func_name == "_?_:_" && call.args.len() == 3 {
-            let predicate = &call.args[0];
-            let then_branch = &call.args[1];
-            let else_branch = &call.args[2];
-
-            // Check then_branch is @result + [var]
-            if let Expr::Call(add_call) = &then_branch.expr {
-                if add_call.func_name == "_+_" && add_call.args.len() == 2 {
-                    if let Expr::Ident(name) = &add_call.args[0].expr {
-                        if name == "@result" {
-                            if let Expr::List(list) = &add_call.args[1].expr {
-                                if list.elements.len() == 1 {
-                                    if let Expr::Ident(var) = &list.elements[0].expr {
-                                        if var == &comp.iter_var {
-                                            // Check else_branch is @result
-                                            if let Expr::Ident(else_name) = &else_branch.expr {
-                                                if else_name == "@result" {
-                                                    // This is a filter!
-                                                    return Some(format_expr(predicate));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    None
 }
 
 /// Extract all() pattern: @result && predicate
@@ -826,6 +842,14 @@ mod tests {
     }
 
     #[test]
+    fn test_map_macro_with_filter() {
+        assert_eq!(
+            format_expr_str("[1, 2, 3].map(x, x > 1, x * 2)"),
+            "[1, 2, 3].map(x, x > 1, x * 2)"
+        );
+    }
+
+    #[test]
     fn test_filter_macro() {
         assert_eq!(
             format_expr_str("[1, 2, 3, 4, 5].filter(x, x > 2)"),
@@ -878,6 +902,14 @@ mod tests {
         assert_eq!(
             format_expr_str("[[1, 2], [3, 4]].map(x, x.map(y, y * 2))"),
             "[[1, 2], [3, 4]].map(x, x.map(y, y * 2))"
+        );
+    }
+
+    #[test]
+    fn test_raw_comprehension_fallback() {
+        assert_eq!(
+            format_expr_str("__comprehension__(values, x, accu, [], accu < 10, accu + x, accu)"),
+            "__comprehension__(values, x, accu, [], accu < 10, accu + x, accu)"
         );
     }
 }
